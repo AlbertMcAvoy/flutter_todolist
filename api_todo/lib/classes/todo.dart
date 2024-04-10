@@ -5,12 +5,16 @@ part 'todo.g.dart';
 
 @JsonSerializable(explicitToJson: true)
 class Todo {
+  int id;
   String name;
+  String description;
   bool isCompleted;
 
   Todo (
     {
+      this.id = 0,
       this.name = '',
+      this.description = '',
       this.isCompleted = false
     }
   );

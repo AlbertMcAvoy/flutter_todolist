@@ -1,27 +1,27 @@
 import 'package:alfred/alfred.dart';
-import 'package:api_todo/services/services.dart';
-
+import 'package:api_todo/classes/todo.dart';
+import 'package:api_todo/services/in_memory.dart';
 class TodosRoute {
 
-  static login(HttpRequest req, HttpResponse res) async {
-    final body = await req.bodyAsJsonMap;
-    final email = body['email'];
-    final password = body['password'];
-
-    if (email == null || email == '' || 
-        password == null || password == ''
-      ) {
-        throw AlfredException(401, {'message': 'Invalid Credentials'});
-    }
-
-    if (email == services.EMAIL && password == services.PASSWORD) {
-    }
+  static get(HttpRequest req, HttpResponse res) async {
+    return await inMemory.get(int.parse(req.params['id']));
   }
 
-  static get(HttpRequest req, HttpResponse res) {}
+  static getAll(HttpRequest req, HttpResponse res) async {
+    return await inMemory.getAll();
+  }
 
-  static getAll(HttpRequest req, HttpResponse res) {}
+  static create(HttpRequest req, HttpResponse res) async {
+    final body = await req.bodyAsJsonMap;
+    return await inMemory.create(Todo.fromJson(body));
+  }
 
-  static create(HttpRequest req, HttpResponse res) {}
+  static update(HttpRequest req, HttpResponse res) async {
+    final body = await req.bodyAsJsonMap;
+    return await inMemory.update(int.parse(req.params['id']), Todo.fromJson(body));
+  }
 
+  static delete(HttpRequest req, HttpResponse res) async {
+    return await inMemory.delete(int.parse(req.params['id']));
+  }
 }
