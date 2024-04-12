@@ -1,6 +1,50 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 void main() => runApp(const SpacedItemsList());
+
+// Future<Todo> fetchTodo() async {
+//   final response = await http
+//       .get(Uri.parse('https://jsonplaceholder.typicode.com/Todos/1'));
+
+//   if (response.statusCode == 200) {
+//     // If the server did return a 200 OK response,
+//     // then parse the JSON.
+//     return Todo.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+//   } else {
+//     // If the server did not return a 200 OK response,
+//     // then throw an exception.
+//     throw Exception('Failed to load Todo');
+//   }
+// }
+
+// class Todo {
+//   final int userId;
+//   final int id;
+//   final String title;
+
+//   const Todo({
+//     required this.userId,
+//     required this.id,
+//     required this.title,
+//   });
+
+//   factory Todo.fromJson(Map<String, dynamic> json) {
+//     return switch (json) {
+//       {
+//         'userId': int userId,
+//         'id': int id,
+//         'title': String title,
+//       } =>
+//         Todo(
+//           userId: userId,
+//           id: id,
+//           title: title,
+//         ),
+//       _ => throw const FormatException('Failed to load Todo.'),
+//     };
+//   }
+// }
 
 class SpacedItemsList extends StatelessWidget {
   const SpacedItemsList({super.key});
@@ -10,7 +54,7 @@ class SpacedItemsList extends StatelessWidget {
     return MaterialApp(
       initialRoute: '/',
       routes: {
-        '/': (context) => HomeScreen(),
+        '/': (context) => Home(),
         '/edit': (context) => EditScreen(todo: ''),
       },
       title: 'Flutter Todo',
@@ -24,12 +68,18 @@ class SpacedItemsList extends StatelessWidget {
   }
 }
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+class Home extends StatefulWidget {
+  const Home({super.key});
+  @override
+  State<Home> createState() => HomeScreen();
+}
+
+class HomeScreen extends State<Home> {
+  // const HomeScreen({Key? key}) : super(key: key);
+    var items = 1;
 
   @override
   Widget build(BuildContext context) {
-    const items = 8;
 
     return Scaffold(
       body: LayoutBuilder(builder: (context, constraints) {
@@ -48,10 +98,15 @@ class HomeScreen extends StatelessWidget {
       }),
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
-        onPressed: () {},
+        onPressed: () {
+          items = items + 1;
+          print(items);
+          setState(() {});  
+        },
       ),
     );
   }
+
 }
 
 class ItemWidget extends StatelessWidget {
@@ -77,6 +132,7 @@ class ItemWidget extends StatelessWidget {
     );
   }
 }
+
 
 class ButtonListe extends StatelessWidget {
   const ButtonListe({Key? key, required this.text}) : super(key: key);
