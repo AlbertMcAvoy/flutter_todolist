@@ -1,7 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:front_todo/auth.dart';
+import 'package:provider/provider.dart';
 
-void main() => runApp(const SpacedItemsList());
+void main() => runApp(const App());
+
+class App extends StatelessWidget {
+  const App({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (context) => LoginController(),
+      child: const SpacedItemsList(),
+    );
+  }
+}
+
 
 // Future<Todo> fetchTodo() async {
 //   final response = await http
@@ -54,56 +68,73 @@ class SpacedItemsList extends StatelessWidget {
     return MaterialApp(
       initialRoute: '/',
       routes: {
-        '/': (context) => Home(),
-        '/edit': (context) => EditScreen(todo: ''),
+        '/': (context) => const HomeScreen(),
+        '/edit': (context) => const EditScreen(todo: ''),
+        '/login': (context) => LoginScreen()
       },
       title: 'Flutter Todo',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        cardTheme: CardTheme(color: Color.fromARGB(255, 250, 250, 250)),
+        cardTheme: const CardTheme(color: Color.fromARGB(255, 250, 250, 250)),
         useMaterial3: true,
       ),
     );
   }
 }
 
-class Home extends StatefulWidget {
-  const Home({super.key});
-  @override
-  State<Home> createState() => HomeScreen();
-}
-
-class HomeScreen extends State<Home> {
-  // const HomeScreen({Key? key}) : super(key: key);
-    var items = 1;
-
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key});
+  
   @override
   Widget build(BuildContext context) {
-
-    return Scaffold(
-      body: LayoutBuilder(builder: (context, constraints) {
-        return SingleChildScrollView(
-            child: ConstrainedBox(
-          constraints: BoxConstraints(minHeight: constraints.maxHeight),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: List.generate(
-                items,
-                (index) => Column(children: [
-                      ItemWidget(text: 'Item $index  '),
-                    ])),
+    const items = 8;
+    final loginController = context.watch<LoginController>();
+    
+    return ListenableBuilder(
+      listenable: loginController,
+      builder: (BuildContext context, child) {
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Todo list'),
+            centerTitle: false,
+            actions: [
+              if (loginController.currentUser?.name != null) ...[
+                Text(loginController.currentUser!.name),
+                IconButton(
+                  onPressed: () => loginController.logout(),
+                  icon: Icon(Icons.logout, color: Colors.pink.shade700),
+                )
+              ] else
+                IconButton(
+                  onPressed: () => Navigator.of(context).pushNamed('/login'),
+                  icon: Icon(Icons.account_box, color: Colors.pink.shade700),
+                )
+            ]
           ),
-        ));
-      }),
-      floatingActionButton: FloatingActionButton(
-        child: const Icon(Icons.add),
-        onPressed: () {
-          items = items + 1;
-          print(items);
-          setState(() {});  
-        },
-      ),
+          body: LayoutBuilder(builder: (context, constraints) {
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: List.generate(
+                  items,
+                  (index) => Column(
+                    children: [
+                      ItemWidget(text: 'Item $index  '),
+                    ]
+                  )
+                ),
+              ),
+            ));
+          }),
+          floatingActionButton: FloatingActionButton(
+            child: const Icon(Icons.add),
+            onPressed: () {},
+          )
+        );
+      }
     );
   }
 
@@ -135,7 +166,7 @@ class ItemWidget extends StatelessWidget {
 
 
 class ButtonListe extends StatelessWidget {
-  const ButtonListe({Key? key, required this.text}) : super(key: key);
+  const ButtonListe({super.key, required this.text});
   final String text;
   @override
   Widget build(BuildContext context) {
@@ -145,7 +176,7 @@ class ButtonListe extends StatelessWidget {
         onPressed: () {
           // Respond to button press
         },
-        icon: Icon(Icons.delete, size: 18),
+        icon: const Icon(Icons.delete, size: 18),
       ),
       IconButton(
         onPressed: () {
@@ -157,31 +188,27 @@ class ButtonListe extends StatelessWidget {
                         todo: text,
                       )));
         },
-        icon: Icon(Icons.edit, size: 18),
+        icon: const Icon(Icons.edit, size: 18),
       ),
     ]);
   }
 }
 
 class EditScreen extends StatelessWidget {
-  const EditScreen({Key? key, required this.todo}) : super(key: key);
+  const EditScreen({super.key, required this.todo});
   final String todo;
   
   @override
   Widget build(BuildContext context) {
-    final _formKey = GlobalKey<FormState>();
+    final formKey = GlobalKey<FormState>();
     return Scaffold(
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(todo),
-            TextButton(
-              child: const Text('Retour'),
-              onPressed: Navigator.of(context).pop,
-            ),
             Form(
-              key: _formKey,
+              key: formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -200,19 +227,28 @@ class EditScreen extends StatelessWidget {
                 ],
               ),
             ),
-            Padding(
-            padding: const EdgeInsets.symmetric(vertical: 30),
-            child: ElevatedButton(
-              onPressed: () {
-                if (_formKey.currentState!.validate()) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('La liste a été mis à jour')),
-                  );
-                }
-              },
-              child: const Text('Mettre a jour'),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 30),
+                  child: ElevatedButton(
+                    onPressed: () {
+                      if (formKey.currentState!.validate()) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('La liste a été mis à jour')),
+                        );
+                      }
+                    },
+                    child: const Text('Mettre a jour'),
+                  ),
+                ),
+                TextButton(
+                  onPressed: Navigator.of(context).pop,
+                  child: const Text('Retour'),
+                )
+              ],
             ),
-          ),
           ],
         ),
       ),

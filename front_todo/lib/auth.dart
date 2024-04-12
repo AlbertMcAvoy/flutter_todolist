@@ -1,111 +1,148 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 
-void main() => runApp(const MyApp());
+class LoginController extends ChangeNotifier {
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  bool _loading = false;
+  bool get loading => _loading;
+
+  String? _errorMessage;
+  String? get errorMessage =>_errorMessage;
+
+  User? _currentUser;
+  User? get currentUser => _currentUser;
+
+  final _mailController = TextEditingController();
+  TextEditingController get mailController => _mailController;
+
+  final _passwordController = TextEditingController();
+  TextEditingController get passwordController => _passwordController;
+
+  void login({required VoidCallback onSuccess}) async {
+    _loading = true;
+    notifyListeners();
+
+    await Future.delayed(const Duration(seconds: 2));
+
+    final mail = _mailController.text;
+    final password = _passwordController.text;
+
+    final result = await http.post(
+        Uri.parse('http://localhost:3000/login'),
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          'Content-Type': 'application/json',
+          'Accept': '*/*'
+        },
+        body: jsonEncode({"email": mail, "password": password})
+      );
+      
+      _loading = false;
+      if (result.statusCode == 200) {
+        _currentUser = User(name: 'Auvergne Aurillac', mail: mail, token: jsonDecode(result.body)['token']);
+        notifyListeners();
+        onSuccess();
+      } else {
+        _errorMessage = "Erreur d'identification";
+        notifyListeners();
+      }
+  }
+
+  void logout() {
+    _currentUser = null;
+    notifyListeners();
+  }
+}
+
+class LoginScreen extends StatelessWidget {
+  LoginScreen({super.key});
+
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   @override
   Widget build(BuildContext context) {
-    const appTitle = 'Connexion';
+    final LoginController loginController = context.watch<LoginController>();
 
-    return MaterialApp(
-      title: appTitle,
-      home: Scaffold(
-       body: CustomScrollView(
-          slivers: [
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Text(
-                    appTitle,
-                    style: TextStyle(
-                      fontSize: 24, // Définir la taille de la police
-                      fontWeight: FontWeight.bold, // Optionnel: définir le poids de la police
+    return ListenableBuilder(
+      listenable: loginController,
+      builder: (BuildContext context, child) {
+        return Scaffold(
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(28.0),
+              child: Form(
+                key: _formKey,
+                child: Column(children: [
+                  TextFormField(
+                      controller: loginController.mailController,
+                      decoration: const InputDecoration(labelText: 'Email'),
+                      validator: (String? value) {
+                        return value?.contains('@') == true ? null : 'KO';
+                      }),
+                  TextFormField(
+                      controller: loginController.passwordController,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Password',
+                      ),
+                      validator: (String? value) {
+                        return (value == null || value.isEmpty) ? 'KO' : null;
+                      }),
+                  if (loginController.errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.all(28.0),
+                      child: Text(loginController.errorMessage!),
                     ),
-                  ),
-                  MyCustomForm(),
-                ],
+                  loginController.loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            TextButton(
+                              onPressed: Navigator.of(context).pop,
+                              child: const Text('Cancel'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () {
+                                if (_formKey.currentState?.validate() == true) {
+                                  loginController.login(onSuccess: () {
+                                      if (context.mounted) {
+                                        Navigator.of(context).pop();
+                                      }
+                                    },);
+                                }
+                              },
+                              child: const Text('Submit'),
+                            ),
+                          ],
+                        )
+                ]),
               ),
             ),
-          ],
-       ),
-      )
+          ),
+        );
+      }
     );
   }
 }
 
-// Create a Form widget.
-class MyCustomForm extends StatefulWidget {
-  const MyCustomForm({super.key});
+class User {
+  final String name;
 
-  @override
-  MyCustomFormState createState() {
-    return MyCustomFormState();
-  }
-}
+  final String mail;
 
-// Create a corresponding State class.
-// This class holds data related to the form.
-class MyCustomFormState extends State<MyCustomForm> {
-  final _formKey = GlobalKey<FormState>();
+  final String token;
 
-  @override
-  Widget build(BuildContext context) {
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 300.0,
-            
-            child: TextFormField(
-              decoration: InputDecoration(
-                hintText: "email"
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return "L'email ne peut pas etre vide !";
-                }
-                return null;
-              },
-            ),
-          ),
-          
-          SizedBox(
-            width: 300.0,
-            child: TextFormField(
-              obscureText: true,
-              decoration: InputDecoration(
-                hintText: "mot de passe"
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return "Le mot de passe ne peut pas etre vide";
-                }
-                return null;
-              },
-            ),
-          ),
-          
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 30),
-            child: ElevatedButton(
-              onPressed: () {
-                if (_formKey.currentState!.validate()) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Connexion réussie')),
-                  );
-                }
-              },
-              child: const Text('Se connecter'),
-            ),
-          ),
-        ],
-      ),
-    );
+  User({required this.name, required this.mail, required this.token});
+
+  factory User.fromMap(Map<String, dynamic> data) {
+    if (data case {'name': final name, 'mail': final mail, 'token': final token}) {
+      return User(name: name, mail: mail, token: token);
+    }
+
+    throw Exception('Invalid user');
   }
 }
