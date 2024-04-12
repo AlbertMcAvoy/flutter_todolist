@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:front_todo/auth.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
 
 void main() => runApp(const App());
 
@@ -88,9 +91,7 @@ class HomeScreen extends StatelessWidget {
   
   @override
   Widget build(BuildContext context) {
-    const items = 8;
     final loginController = context.watch<LoginController>();
-    
     return ListenableBuilder(
       listenable: loginController,
       builder: (BuildContext context, child) {
@@ -113,21 +114,33 @@ class HomeScreen extends StatelessWidget {
             ]
           ),
           body: LayoutBuilder(builder: (context, constraints) {
-            return SingleChildScrollView(
-              child: ConstrainedBox(
+            return ConstrainedBox(
               constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: List.generate(
-                  items,
-                  (index) => Column(
-                    children: [
-                      ItemWidget(text: 'Item $index  '),
-                    ]
-                  )
+              child: Center(
+                child: FutureBuilder(
+                  future: _loadTodos(loginController),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                      return const Text('Erreur', style: TextStyle(color: Colors.red));
+                    }
+                
+                    if (!snapshot.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    final items = snapshot.data!;
+                
+                    return ListView.builder(
+                        itemCount: items.length,
+                        itemBuilder: (context, index) {
+                          final todo = items[index];
+                
+                          return ItemWidget(todo: todo);
+                        }
+                    );
+                  }
                 ),
               ),
-            ));
+            );
           }),
           floatingActionButton: FloatingActionButton(
             child: const Icon(Icons.add),
@@ -138,15 +151,51 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  Future<List<Todo>> _loadTodos(LoginController loginController) async {
+    final token = loginController.currentUser?.token;
+    final result = await http.get(
+      Uri.parse('http://localhost:3000/todos'),
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        'Content-Type': 'application/json',
+        'Accept': '*/*',
+        'Authorization': 'Bearer $token'
+      },
+    );
+
+    return List.from(jsonDecode(result.body))
+        .map((e) => Todo.fromMap(e))
+        .toList();
+  }
+}
+
+class Todo {
+  int id;
+  String name;
+  String description;
+  bool isCompleted;
+
+  Todo ({
+    this.id = 0,
+    this.name = '',
+    this.description = '',
+    this.isCompleted = false
+  });
+
+  Todo.fromMap(Map<String, dynamic> data)
+    : id = data['id'],
+      name = data['name'],
+      description = data['description'],
+      isCompleted = data['isCompleted'];
 }
 
 class ItemWidget extends StatelessWidget {
   const ItemWidget({
     super.key,
-    required this.text,
+    required this.todo,
   });
 
-  final String text;
+  final Todo todo;
 
   @override
   Widget build(BuildContext context) {
@@ -156,7 +205,7 @@ class ItemWidget extends StatelessWidget {
         width: 600,
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           ButtonListe(
-            text: text,
+            text: todo.name,
           )
         ]),
       ),
@@ -182,11 +231,13 @@ class ButtonListe extends StatelessWidget {
         onPressed: () {
           // Navigator.of(context).pushNamed('/edit');
           Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => EditScreen(
-                        todo: text,
-                      )));
+            context,
+            MaterialPageRoute(
+                builder: (context) => EditScreen(
+                      todo: text,
+                    )
+            )
+          );
         },
         icon: const Icon(Icons.edit, size: 18),
       ),

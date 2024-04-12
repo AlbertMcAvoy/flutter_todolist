@@ -31,24 +31,24 @@ class LoginController extends ChangeNotifier {
     final password = _passwordController.text;
 
     final result = await http.post(
-        Uri.parse('http://localhost:3000/login'),
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          'Content-Type': 'application/json',
-          'Accept': '*/*'
-        },
-        body: jsonEncode({"email": mail, "password": password})
-      );
-      
-      _loading = false;
-      if (result.statusCode == 200) {
-        _currentUser = User(name: 'Auvergne Aurillac', mail: mail, token: jsonDecode(result.body)['token']);
-        notifyListeners();
-        onSuccess();
-      } else {
-        _errorMessage = "Erreur d'identification";
-        notifyListeners();
-      }
+      Uri.parse('http://localhost:3000/login'),
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        'Content-Type': 'application/json',
+        'Accept': '*/*'
+      },
+      body: jsonEncode({"email": mail, "password": password})
+    );
+    
+    _loading = false;
+    if (result.statusCode == 200) {
+      _currentUser = User(name: 'Auvergne Aurillac', mail: mail, token: jsonDecode(result.body)['token']);
+      notifyListeners();
+      onSuccess();
+    } else {
+      _errorMessage = "Erreur d'identification";
+      notifyListeners();
+    }
   }
 
   void logout() {
