@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:front_todo/auth.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
+import 'package:uuid/uuid.dart';
 
 void main() => runApp(const App());
 
@@ -19,50 +20,6 @@ class App extends StatelessWidget {
   }
 }
 
-
-// Future<Todo> fetchTodo() async {
-//   final response = await http
-//       .get(Uri.parse('https://jsonplaceholder.typicode.com/Todos/1'));
-
-//   if (response.statusCode == 200) {
-//     // If the server did return a 200 OK response,
-//     // then parse the JSON.
-//     return Todo.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
-//   } else {
-//     // If the server did not return a 200 OK response,
-//     // then throw an exception.
-//     throw Exception('Failed to load Todo');
-//   }
-// }
-
-// class Todo {
-//   final int userId;
-//   final int id;
-//   final String title;
-
-//   const Todo({
-//     required this.userId,
-//     required this.id,
-//     required this.title,
-//   });
-
-//   factory Todo.fromJson(Map<String, dynamic> json) {
-//     return switch (json) {
-//       {
-//         'userId': int userId,
-//         'id': int id,
-//         'title': String title,
-//       } =>
-//         Todo(
-//           userId: userId,
-//           id: id,
-//           title: title,
-//         ),
-//       _ => throw const FormatException('Failed to load Todo.'),
-//     };
-//   }
-// }
-
 class SpacedItemsList extends StatelessWidget {
   const SpacedItemsList({super.key});
 
@@ -72,7 +29,7 @@ class SpacedItemsList extends StatelessWidget {
       initialRoute: '/',
       routes: {
         '/': (context) => const HomeScreen(),
-        '/edit': (context) => const EditScreen(todo: ''),
+        '/edit': (context) => EditScreen(todo: Todo(id: int.parse(const Uuid().v4()), name: '', description: '', isCompleted: false)),
         '/login': (context) => LoginScreen()
       },
       title: 'Flutter Todo',
@@ -144,7 +101,21 @@ class HomeScreen extends StatelessWidget {
           }),
           floatingActionButton: FloatingActionButton(
             child: const Icon(Icons.add),
-            onPressed: () {},
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EditScreen(
+                    todo: Todo(
+                      id: int.parse(const Uuid().v4()),
+                      name: '',
+                      description: '',
+                      isCompleted: false
+                    ),
+                  )
+                )
+              );
+            },
           )
         );
       }
@@ -205,7 +176,7 @@ class ItemWidget extends StatelessWidget {
         width: 600,
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           ButtonListe(
-            text: todo.name,
+            todo: todo,
           )
         ]),
       ),
@@ -215,12 +186,13 @@ class ItemWidget extends StatelessWidget {
 
 
 class ButtonListe extends StatelessWidget {
-  const ButtonListe({super.key, required this.text});
-  final String text;
+  const ButtonListe({super.key, required this.todo});
+  final Todo todo;
+
   @override
   Widget build(BuildContext context) {
     return Row(children: [
-      Text(text),
+      Text(todo.name),
       IconButton(
         onPressed: () {
           // Respond to button press
@@ -229,13 +201,12 @@ class ButtonListe extends StatelessWidget {
       ),
       IconButton(
         onPressed: () {
-          // Navigator.of(context).pushNamed('/edit');
           Navigator.push(
             context,
             MaterialPageRoute(
-                builder: (context) => EditScreen(
-                      todo: text,
-                    )
+              builder: (context) => EditScreen(
+                todo: todo,
+              )
             )
           );
         },
@@ -247,7 +218,7 @@ class ButtonListe extends StatelessWidget {
 
 class EditScreen extends StatelessWidget {
   const EditScreen({super.key, required this.todo});
-  final String todo;
+  final Todo todo;
   
   @override
   Widget build(BuildContext context) {
@@ -257,7 +228,7 @@ class EditScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(todo),
+            Text(todo.name),
             Form(
               key: formKey,
               child: Column(
@@ -266,7 +237,7 @@ class EditScreen extends StatelessWidget {
                   SizedBox(
                     width: 300.0,
                     child: TextFormField(
-                      decoration: InputDecoration(hintText: todo),
+                      decoration: InputDecoration(hintText: todo.name),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return "Le champs text ne peut pas etre vide !";
