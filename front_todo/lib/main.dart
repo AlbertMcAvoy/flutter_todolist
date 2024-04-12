@@ -121,7 +121,7 @@ class HomeScreen extends StatelessWidget {
                   future: _loadTodos(loginController),
                   builder: (context, snapshot) {
                     if (snapshot.hasError) {
-                      return const Text('Erreur', style: TextStyle(color: Colors.red));
+                      return const Text('Veuillez vous connecter pour accéder à la TODO list (en haut à droite)', style: TextStyle(color: Colors.red));
                     }
                 
                     if (!snapshot.hasData) {
