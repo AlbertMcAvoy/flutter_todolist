@@ -6,7 +6,6 @@ import 'package:front_todo/auth.dart';
 import 'package:front_todo/classes/todo.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
-import 'package:uuid/uuid.dart';
 
 void main() => runApp(const App());
 
@@ -117,14 +116,13 @@ class HomeScreen extends StatelessWidget {
   }
 
   Future<List<Todo>> _loadTodos(LoginController loginController) async {
-    final token = loginController.currentUser?.token;
     final result = await http.get(
       Uri.parse('http://localhost:3000/todos'),
       headers: {
         "Access-Control-Allow-Origin": "*",
         'Content-Type': 'application/json',
         'Accept': '*/*',
-        'Authorization': 'Bearer $token'
+        'Authorization': 'Bearer ${loginController.currentUser?.token}'
       },
     );
 
@@ -187,19 +185,46 @@ class ButtonListe extends StatelessWidget {
   }
 }
 
+class TodoController extends ChangeNotifier  {
+
+  final _nameController = TextEditingController();
+  TextEditingController get nameController => _nameController;
+
+  final _descriptionController = TextEditingController();
+  TextEditingController get descriptionController => _descriptionController;
+
+  bool _isCompletedController = false;
+  bool get isCompletedController => _isCompletedController;
+
+  void init(Todo todo) {
+    _nameController.text = todo.name;
+    _descriptionController.text = todo.description;
+    _isCompletedController = todo.isCompleted;
+  }
+  
+  void inverseIsCompleted() {
+    _isCompletedController = !_isCompletedController;
+    notifyListeners();
+  }
+}
+
 class EditScreen extends StatelessWidget {
   const EditScreen({super.key});
   @override
   Widget build(BuildContext context) {
     final todo = ModalRoute.of(context)!.settings.arguments as Todo;
+    final todoController = TodoController();
+    final loginController = context.watch<LoginController>();
     final formKey = GlobalKey<FormState>();
+
+    todoController.init(todo);
     
     return Scaffold(
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(todo.name),
+            Text("Tâche n°${todo.id}"),
             Form(
               key: formKey,
               child: Column(
@@ -208,15 +233,27 @@ class EditScreen extends StatelessWidget {
                   SizedBox(
                     width: 300.0,
                     child: TextFormField(
-                      decoration: InputDecoration(hintText: todo.name),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return "Le champs text ne peut pas etre vide !";
-                        }
-                        return null;
-                      },
-                    ),
+                      controller: todoController._nameController,
+                      decoration: const InputDecoration(labelText: 'Nom de la tâche'),
+                      validator: (String? value) {
+                        return value?.isNotEmpty == true ? null : 'Cette valeur ne peut être vide';
+                    }),
                   ),
+                  SizedBox(
+                    width: 300.0,
+                    child: TextFormField(
+                      controller: todoController._descriptionController,
+                      decoration: const InputDecoration(labelText: 'Description de la tâche'),
+                      validator: (String? value) {
+                        return value?.isNotEmpty == true ? null : 'Cette valeur ne peut être vide';
+                    }),
+                  ),
+                  Checkbox(
+                    value: todoController.isCompletedController,
+                    onChanged: (bool? value) { // This is where we update the state when the checkbox is tapped
+                      todoController.inverseIsCompleted();
+                    },
+                  )
                 ],
               ),
             ),
@@ -226,11 +263,37 @@ class EditScreen extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 30),
                   child: ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
                       if (formKey.currentState!.validate()) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('La liste a été mis à jour')),
+                        final result = await http.post(
+                          Uri.parse('http://localhost:3000/todos'),
+                          headers: {
+                            "Access-Control-Allow-Origin": "*",
+                            'Content-Type': 'application/json',
+                            'Accept': '*/*',
+                            'Authorization': 'Bearer ${loginController.currentUser?.token}'
+                          },
+                          body: jsonEncode({
+                            "id": todo.id,
+                            "name": todoController._nameController,
+                            "description": todoController._descriptionController,
+                            "isCompleted": todoController._isCompletedController,
+                            }
+                          )
                         );
+                        
+                        if (context.mounted) {
+                          if (result.statusCode == 200) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('La liste a été mis à jour')),
+                            );
+                            Navigator.of(context).pop;
+                          } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Une erreur est survenue')),
+                            );
+                          }
+                        }
                       }
                     },
                     child: const Text('Mettre a jour'),
