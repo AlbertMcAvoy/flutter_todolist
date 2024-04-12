@@ -7,6 +7,9 @@ class Server {
   final app = Alfred();
 
   Future start({int port = 3000}) async {
+    
+    app.all('*', cors(origin: '*'));
+
     app.get('/status', (req, res) => 'Server Online');
 
     app.post('/login', Authenthication.login);
