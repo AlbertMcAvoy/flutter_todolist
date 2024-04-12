@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:front_todo/auth.dart';
+import 'package:front_todo/classes/todo.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
@@ -29,7 +31,7 @@ class SpacedItemsList extends StatelessWidget {
       initialRoute: '/',
       routes: {
         '/': (context) => const HomeScreen(),
-        '/edit': (context) => EditScreen(todo: Todo(id: int.parse(const Uuid().v4()), name: '', description: '', isCompleted: false)),
+        '/edit': (context) => const EditScreen(),
         '/login': (context) => LoginScreen()
       },
       title: 'Flutter Todo',
@@ -102,18 +104,10 @@ class HomeScreen extends StatelessWidget {
           floatingActionButton: FloatingActionButton(
             child: const Icon(Icons.add),
             onPressed: () {
-              Navigator.push(
+              Navigator.pushNamed(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => EditScreen(
-                    todo: Todo(
-                      id: int.parse(const Uuid().v4()),
-                      name: '',
-                      description: '',
-                      isCompleted: false
-                    ),
-                  )
-                )
+                '/edit',
+                arguments: Todo(id: Random().nextInt(1000000), name: '', description: '', isCompleted: false)
               );
             },
           )
@@ -138,26 +132,6 @@ class HomeScreen extends StatelessWidget {
         .map((e) => Todo.fromMap(e))
         .toList();
   }
-}
-
-class Todo {
-  int id;
-  String name;
-  String description;
-  bool isCompleted;
-
-  Todo ({
-    this.id = 0,
-    this.name = '',
-    this.description = '',
-    this.isCompleted = false
-  });
-
-  Todo.fromMap(Map<String, dynamic> data)
-    : id = data['id'],
-      name = data['name'],
-      description = data['description'],
-      isCompleted = data['isCompleted'];
 }
 
 class ItemWidget extends StatelessWidget {
@@ -201,13 +175,10 @@ class ButtonListe extends StatelessWidget {
       ),
       IconButton(
         onPressed: () {
-          Navigator.push(
+          Navigator.pushNamed(
             context,
-            MaterialPageRoute(
-              builder: (context) => EditScreen(
-                todo: todo,
-              )
-            )
+            '/edit',
+            arguments: todo
           );
         },
         icon: const Icon(Icons.edit, size: 18),
@@ -217,12 +188,12 @@ class ButtonListe extends StatelessWidget {
 }
 
 class EditScreen extends StatelessWidget {
-  const EditScreen({super.key, required this.todo});
-  final Todo todo;
-  
+  const EditScreen({super.key});
   @override
   Widget build(BuildContext context) {
+    final todo = ModalRoute.of(context)!.settings.arguments as Todo;
     final formKey = GlobalKey<FormState>();
+    
     return Scaffold(
       body: Center(
         child: Column(
